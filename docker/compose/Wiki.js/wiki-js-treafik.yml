@@ -1,0 +1,52 @@
+version: "3"
+services:
+  db:
+    image: postgres:11-alpine
+    environment:
+      POSTGRES_DB: wiki
+      POSTGRES_PASSWORD: wikijsrocks
+      POSTGRES_USER: wikijs
+    logging:
+      driver: "none"
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  wiki:
+    image: ghcr.io/requarks/wiki:2.5.294
+    depends_on:
+      - db
+    volumes:
+      - /etc/wiki:/etc/wiki
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: wikijs
+      DB_PASS: wikijsrocks
+      DB_NAME: wiki
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    networks:
+      - public
+      - internal
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.wikijs.rule=Host(`wiki.your-domain.com`)"
+        - "traefik.http.routers.wikijs.entrypoints=websecure"
+        - "traefik.http.routers.wikijs.tls=true"
+        - "traefik.http.services.wikijs.loadbalancer.server.port=3000"
+        - "traefik.http.routers.wikijs.service=wikijs"
+
+volumes:
+  db-data:
+
+networks:
+  public:
+    external: true
+  internal:
+    external: false
