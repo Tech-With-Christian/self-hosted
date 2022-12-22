@@ -1,0 +1,66 @@
+version: "3.2"
+    
+services:
+
+  elasticsearch:
+    image: elasticsearch:8.4.3
+    networks:
+      - public
+      - backend
+    ports:
+      - "9200:9200"
+    expose:
+      - "9200"
+      - "9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    environment:
+      - xpack.security.enabled=false
+      - "discovery.type=single-node"
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+       memlock:
+         soft: -1
+         hard: -1
+       nofile:
+         soft: 65536
+         hard: 65536
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.4.3  # must match elasticsearch image
+    networks:
+      - public
+      - backend
+    ports:
+      - 5611:5601
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    restart: always
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.kibana.rule=Host(`kibana.your-domain.com`)"
+        - "traefik.http.routers.kibana.entrypoints=websecure"
+        - "traefik.http.routers.kibana.tls=true"
+        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+        - "traefik.http.routers.kibana.service=kibana"
+          
+volumes:
+  elasticsearch_data:
+    driver: local
+  kibana_data:
+    driver: local
+    
+networks:
+  public:
+    external: true
+  backend:
+    external: false
