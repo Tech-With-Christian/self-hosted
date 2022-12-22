@@ -1,0 +1,34 @@
+version: "3.8"
+services:
+
+  openproject:
+    image: openproject/community:12
+    environment:
+      SERVER_HOSTNAME: openproject.your-site.com
+      SECRET_KEY_BASE: hereIsASecret2022
+    restart: unless-stopped
+    volumes:
+      - assets:/var/openproject/assets
+      - pgdata:/var/openproject/pgdata
+    ports:
+      - 8082:8080
+    networks:
+      - public
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.openproject.rule=Host(`openproject.your-site.com`)"
+        - "traefik.http.routers.openproject.entrypoints=websecure"
+        - "traefik.http.routers.openproject.tls=true"
+        - "traefik.http.services.openproject.loadbalancer.server.port=8080"
+        - "traefik.http.routers.openproject.service=openproject"
+      placement:
+        constraints: [node.role != manager]
+
+volumes:
+  assets:
+  pgdata:
+
+networks:
+  public:
+    external: true
